@@ -164,3 +164,37 @@ export const logout = async (req, res) => {
   }
 };
 
+// @desc    Search users by email
+// @route   GET /api/auth/search?email=...
+// @access  Private
+export const searchUsers = async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    if (!email || email.length < 2) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide an email to search (minimum 2 characters)'
+      });
+    }
+
+    // Search users by email (case-insensitive, partial match)
+    const users = await User.find({
+      email: { $regex: email, $options: 'i' }
+    })
+    .select('_id name email profilePic')
+    .limit(10); // Limit results to 10
+
+    res.status(200).json({
+      success: true,
+      count: users.length,
+      data: users
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+

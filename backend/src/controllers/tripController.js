@@ -2,6 +2,9 @@ import Trip from '../models/Trip.js';
 import Expense from '../models/Expense.js';
 import Itinerary from '../models/Itinerary.js';
 import Task from '../models/Task.js';
+import User from '../models/User.js';
+import Invitation from '../models/Invitation.js';
+import Notification from '../models/Notification.js';
 
 // @desc    Create trip
 // @route   POST /api/trips
@@ -131,10 +134,34 @@ export const getTrip = async (req, res) => {
     const tasks = await Task.find({ tripId: trip._id })
       .populate('assignedTo', 'name email profilePic');
 
+    // Transform gallery items to include data URLs
+    const tripData = trip.toObject();
+    if (tripData.gallery && tripData.gallery.length > 0) {
+      tripData.gallery = tripData.gallery.map(photo => {
+        // If fileData exists and is not already a data URL, convert it
+        if (photo.fileData && !photo.fileData.startsWith('data:')) {
+          return {
+            ...photo,
+            fileData: `data:${photo.mimeType || 'image/jpeg'};base64,${photo.fileData}`
+          };
+        }
+        // Fallback for old imageUrl format
+        if (photo.imageUrl && !photo.fileData) {
+          return {
+            ...photo,
+            fileData: photo.imageUrl,
+            fileType: 'image',
+            mimeType: 'image/jpeg'
+          };
+        }
+        return photo;
+      });
+    }
+
     res.status(200).json({
       success: true,
       data: {
-        ...trip.toObject(),
+        ...tripData,
         expenses,
         itinerary,
         tasks
@@ -230,12 +257,20 @@ export const deleteTrip = async (req, res) => {
   }
 };
 
-// @desc    Add participant
+// @desc    Invite participant (only trip creator can invite)
 // @route   PUT /api/trips/:id/participants
 // @access  Private
-export const addParticipant = async (req, res) => {
+export const inviteParticipant = async (req, res) => {
   try {
-    const { userId } = req.body;
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide an email address'
+      });
+    }
+
     const trip = await Trip.findById(req.params.id);
 
     if (!trip) {
@@ -245,31 +280,91 @@ export const addParticipant = async (req, res) => {
       });
     }
 
-    // Check if user is creator or participant
-    const hasAccess = trip.createdBy.toString() === req.user._id.toString() ||
-      trip.participants.some(p => p.toString() === req.user._id.toString());
-
-    if (!hasAccess) {
+    // Only trip creator can invite participants
+    if (trip.createdBy.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized'
+        message: 'Only trip creator can invite participants'
       });
     }
 
-    if (!trip.participants.includes(userId)) {
-      trip.participants.push(userId);
-      await trip.save();
+    // Find user by email
+    const invitedUser = await User.findOne({ email: email.toLowerCase() });
+    if (!invitedUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'User with this email not found'
+      });
     }
 
-    const updatedTrip = await Trip.findById(req.params.id)
-      .populate('createdBy', 'name email profilePic')
-      .populate('participants', 'name email profilePic');
+    // Check if user is already a participant
+    const isAlreadyParticipant = trip.participants.some(
+      p => p.toString() === invitedUser._id.toString()
+    );
 
-    res.status(200).json({
+    if (isAlreadyParticipant) {
+      return res.status(400).json({
+        success: false,
+        message: 'User is already a participant'
+      });
+    }
+
+    // Check if there's already a pending invitation
+    const existingInvitation = await Invitation.findOne({
+      tripId: trip._id,
+      invitedUser: invitedUser._id,
+      status: 'pending'
+    });
+
+    if (existingInvitation) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invitation already sent to this user'
+      });
+    }
+
+    // Create invitation
+    const invitation = await Invitation.create({
+      tripId: trip._id,
+      invitedBy: req.user._id,
+      invitedUser: invitedUser._id,
+      status: 'pending'
+    });
+
+    // Create notification for invited user
+    await Notification.create({
+      userId: invitedUser._id,
+      type: 'trip_invitation',
+      title: 'Trip Invitation',
+      message: `${req.user.name} invited you to join the trip "${trip.title}"`,
+      tripId: trip._id,
+      invitationId: invitation._id
+    });
+
+    res.status(201).json({
       success: true,
-      data: updatedTrip
+      message: 'Invitation sent successfully',
+      data: {
+        invitation: {
+          _id: invitation._id,
+          tripId: trip._id,
+          invitedUser: {
+            _id: invitedUser._id,
+            name: invitedUser.name,
+            email: invitedUser.email
+          },
+          status: invitation.status
+        }
+      }
     });
   } catch (error) {
+    // Handle duplicate key error
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invitation already exists'
+      });
+    }
     res.status(500).json({
       success: false,
       message: error.message
@@ -277,7 +372,7 @@ export const addParticipant = async (req, res) => {
   }
 };
 
-// @desc    Remove participant
+// @desc    Remove participant (creator can remove anyone, participant can only remove themselves)
 // @route   DELETE /api/trips/:id/participants/:userId
 // @access  Private
 export const removeParticipant = async (req, res) => {
@@ -291,11 +386,22 @@ export const removeParticipant = async (req, res) => {
       });
     }
 
-    // Check if user is creator
-    if (trip.createdBy.toString() !== req.user._id.toString()) {
+    const isCreator = trip.createdBy.toString() === req.user._id.toString();
+    const isRemovingSelf = req.params.userId === req.user._id.toString();
+
+    // Only creator can remove others, or user can remove themselves
+    if (!isCreator && !isRemovingSelf) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized'
+        message: 'Not authorized to remove this participant'
+      });
+    }
+
+    // Creator cannot remove themselves
+    if (isCreator && isRemovingSelf) {
+      return res.status(400).json({
+        success: false,
+        message: 'Trip creator cannot leave the trip. Delete the trip instead.'
       });
     }
 
@@ -310,7 +416,60 @@ export const removeParticipant = async (req, res) => {
 
     res.status(200).json({
       success: true,
+      message: isRemovingSelf ? 'You have left the trip' : 'Participant removed',
       data: updatedTrip
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
+};
+
+// @desc    Leave trip (participant leaves themselves)
+// @route   POST /api/trips/:id/leave
+// @access  Private
+export const leaveTrip = async (req, res) => {
+  try {
+    const trip = await Trip.findById(req.params.id);
+
+    if (!trip) {
+      return res.status(404).json({
+        success: false,
+        message: 'Trip not found'
+      });
+    }
+
+    // Check if user is creator
+    if (trip.createdBy.toString() === req.user._id.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Trip creator cannot leave the trip. Delete the trip instead.'
+      });
+    }
+
+    // Check if user is a participant
+    const isParticipant = trip.participants.some(
+      p => p.toString() === req.user._id.toString()
+    );
+
+    if (!isParticipant) {
+      return res.status(400).json({
+        success: false,
+        message: 'You are not a participant of this trip'
+      });
+    }
+
+    // Remove user from participants
+    trip.participants = trip.participants.filter(
+      p => p.toString() !== req.user._id.toString()
+    );
+    await trip.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'You have left the trip'
     });
   } catch (error) {
     res.status(500).json({

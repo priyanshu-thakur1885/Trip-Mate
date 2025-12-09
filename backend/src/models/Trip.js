@@ -58,9 +58,22 @@ const tripSchema = new mongoose.Schema({
     ref: 'Itinerary'
   }],
   gallery: [{
-    imageUrl: {
+    fileData: {
+      type: String,
+      required: true // Base64 encoded file data
+    },
+    fileName: {
       type: String,
       required: true
+    },
+    fileType: {
+      type: String,
+      required: true,
+      enum: ['image', 'video']
+    },
+    mimeType: {
+      type: String,
+      required: true // e.g., 'image/jpeg', 'video/mp4'
     },
     uploadedAt: {
       type: Date,

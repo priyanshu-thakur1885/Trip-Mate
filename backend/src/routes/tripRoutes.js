@@ -5,8 +5,9 @@ import {
   getTrip,
   updateTrip,
   deleteTrip,
-  addParticipant,
-  removeParticipant
+  inviteParticipant,
+  removeParticipant,
+  leaveTrip
 } from '../controllers/tripController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -19,7 +20,8 @@ router.get('/', getTrips);
 router.get('/:id', getTrip);
 router.put('/:id', updateTrip);
 router.delete('/:id', deleteTrip);
-router.put('/:id/participants', addParticipant);
+router.put('/:id/participants', inviteParticipant);
+router.post('/:id/leave', leaveTrip);
 router.delete('/:id/participants/:userId', removeParticipant);
 
 export default router;

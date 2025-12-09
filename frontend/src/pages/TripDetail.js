@@ -12,6 +12,7 @@ import ExpenseChart from '../components/ExpenseChart';
 import ItineraryItem from '../components/ItineraryItem';
 import TaskItem from '../components/TaskItem';
 import GalleryGrid from '../components/GalleryGrid';
+import Chat from '../components/Chat';
 import toast from 'react-hot-toast';
 
 const TripDetail = () => {
@@ -28,6 +29,7 @@ const TripDetail = () => {
   const [showItineraryModal, setShowItineraryModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [showGalleryModal, setShowGalleryModal] = useState(false);
+  const [showAddParticipantModal, setShowAddParticipantModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
 
   useEffect(() => {
@@ -172,14 +174,14 @@ const TripDetail = () => {
   };
 
   // Gallery handlers
-  const handleAddPhoto = async (imageUrl) => {
+  const handleAddPhoto = async (file) => {
     try {
-      await galleryAPI.addPhoto(id, imageUrl);
-      toast.success('Photo added');
+      await galleryAPI.addPhoto(id, file);
+      toast.success('Photo/Video added successfully');
       setShowGalleryModal(false);
       fetchTripData();
     } catch (error) {
-      toast.error('Failed to add photo');
+      toast.error(error.response?.data?.message || 'Failed to add photo/video');
     }
   };
 
@@ -195,6 +197,18 @@ const TripDetail = () => {
     }
   };
 
+  const handleLeaveTrip = async () => {
+    if (window.confirm('Are you sure you want to leave this trip? You will lose access to all trip details.')) {
+      try {
+        await tripsAPI.leaveTrip(id);
+        toast.success('You have left the trip');
+        navigate('/dashboard');
+      } catch (error) {
+        toast.error(error.response?.data?.message || 'Failed to leave trip');
+      }
+    }
+  };
+
   const handleDeleteTrip = async () => {
     if (window.confirm('Are you sure you want to delete this trip? This action cannot be undone.')) {
       try {
@@ -203,6 +217,29 @@ const TripDetail = () => {
         navigate('/dashboard');
       } catch (error) {
         toast.error('Failed to delete trip');
+      }
+    }
+  };
+
+  // Participant handlers (only for trip creator)
+  const handleInviteParticipant = async (email) => {
+    try {
+      await tripsAPI.inviteParticipant(id, email);
+      toast.success('Invitation sent successfully');
+      setShowAddParticipantModal(false);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to send invitation');
+    }
+  };
+
+  const handleRemoveParticipant = async (userId) => {
+    if (window.confirm('Are you sure you want to remove this participant?')) {
+      try {
+        await tripsAPI.removeParticipant(id, userId);
+        toast.success('Participant removed');
+        fetchTripData();
+      } catch (error) {
+        toast.error('Failed to remove participant');
       }
     }
   };
@@ -261,14 +298,24 @@ const TripDetail = () => {
               <span>{format(new Date(trip.endDate), 'MMM dd, yyyy')}</span>
             </div>
           </div>
-          {isCreator && (
-            <button
-              onClick={handleDeleteTrip}
-              className="text-red-600 hover:text-red-800 font-medium"
-            >
-              Delete Trip
-            </button>
-          )}
+          <div className="flex items-center space-x-4">
+            {!isCreator && canEdit && (
+              <button
+                onClick={handleLeaveTrip}
+                className="text-orange-600 hover:text-orange-800 font-medium"
+              >
+                Leave Trip
+              </button>
+            )}
+            {isCreator && (
+              <button
+                onClick={handleDeleteTrip}
+                className="text-red-600 hover:text-red-800 font-medium"
+              >
+                Delete Trip
+              </button>
+            )}
+          </div>
         </div>
         {trip.description && (
           <p className="mt-4 text-gray-700">{trip.description}</p>
@@ -278,7 +325,7 @@ const TripDetail = () => {
       {/* Tabs */}
       <div className="border-b border-gray-200 mb-6">
         <nav className="flex space-x-8">
-          {['overview', 'expenses', 'itinerary', 'tasks', 'gallery'].map((tab) => (
+          {['overview', 'expenses', 'itinerary', 'tasks', 'gallery', 'chat'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -320,7 +367,17 @@ const TripDetail = () => {
             </div>
 
             <div className="card">
-              <h3 className="text-xl font-bold text-gray-900 mb-4">Participants</h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-xl font-bold text-gray-900">Participants</h3>
+                {isCreator && (
+                  <button
+                    onClick={() => setShowAddParticipantModal(true)}
+                    className="btn-primary text-sm"
+                  >
+                    + Invite Participant
+                  </button>
+                )}
+              </div>
               <div className="flex flex-wrap gap-3">
                 {trip.participants?.map((participant) => (
                   <div
@@ -335,6 +392,15 @@ const TripDetail = () => {
                       <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded">
                         Creator
                       </span>
+                    )}
+                    {isCreator && participant._id !== trip.createdBy?._id && (
+                      <button
+                        onClick={() => handleRemoveParticipant(participant._id)}
+                        className="text-red-600 hover:text-red-800 text-sm ml-2"
+                        title="Remove participant"
+                      >
+                        ✕
+                      </button>
                     )}
                   </div>
                 ))}
@@ -545,6 +611,22 @@ const TripDetail = () => {
               />
             )}
           </div>
+        )}
+
+        {activeTab === 'chat' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold text-gray-900">Trip Chat</h2>
+            </div>
+            <Chat tripId={id} />
+          </div>
+        )}
+
+        {showAddParticipantModal && (
+          <AddParticipantModal
+            onClose={() => setShowAddParticipantModal(false)}
+            onInvite={handleInviteParticipant}
+          />
         )}
       </div>
     </div>
@@ -769,35 +851,163 @@ const TaskModal = ({ task, onClose, onSave, participants }) => {
 };
 
 const GalleryModal = ({ onClose, onSave }) => {
-  const [imageUrl, setImageUrl] = useState('');
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0];
+    if (selectedFile) {
+      // Validate file type
+      if (!selectedFile.type.startsWith('image/') && !selectedFile.type.startsWith('video/')) {
+        alert('Please select an image or video file');
+        return;
+      }
+      
+      // Validate file size (50MB)
+      if (selectedFile.size > 50 * 1024 * 1024) {
+        alert('File size must be less than 50MB');
+        return;
+      }
+
+      setFile(selectedFile);
+      
+      // Create preview for images
+      if (selectedFile.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPreview(reader.result);
+        };
+        reader.readAsDataURL(selectedFile);
+      } else {
+        setPreview(null);
+      }
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (imageUrl) {
-      onSave(imageUrl);
+    if (file) {
+      setIsUploading(true);
+      try {
+        await onSave(file);
+      } finally {
+        setIsUploading(false);
+      }
     }
   };
 
   return (
-    <Modal onClose={onClose} title="Add Photo">
+    <Modal onClose={onClose} title="Add Photo/Video">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Select Photo or Video
+          </label>
           <input
-            type="url"
+            type="file"
+            accept="image/*,video/*"
             required
             className="input-field"
-            placeholder="https://example.com/image.jpg"
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
+            onChange={handleFileChange}
           />
+          {preview && (
+            <div className="mt-4">
+              <img
+                src={preview}
+                alt="Preview"
+                className="max-w-full h-48 object-contain rounded-lg border border-gray-300"
+              />
+            </div>
+          )}
+          {file && !preview && file.type.startsWith('video/') && (
+            <div className="mt-4 p-4 bg-gray-100 rounded-lg">
+              <p className="text-sm text-gray-600">
+                Video selected: {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+              </p>
+            </div>
+          )}
         </div>
         <div className="flex justify-end space-x-4">
-          <button type="button" onClick={onClose} className="btn-secondary">
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn-secondary"
+            disabled={isUploading}
+          >
             Cancel
           </button>
-          <button type="submit" className="btn-primary">
-            Add Photo
+          <button
+            type="submit"
+            className="btn-primary"
+            disabled={isUploading || !file}
+          >
+            {isUploading ? 'Uploading...' : 'Add Photo/Video'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+};
+
+const AddParticipantModal = ({ onClose, onInvite }) => {
+  const [email, setEmail] = useState('');
+  const [isSending, setIsSending] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!email) {
+      toast.error('Please enter an email address');
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      await onInvite(email);
+      setEmail('');
+    } catch (error) {
+      // Error is handled in parent component
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  return (
+    <Modal onClose={onClose} title="Invite Participant">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Enter Registered Email
+          </label>
+          <input
+            type="email"
+            required
+            className="input-field"
+            placeholder="user@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={isSending}
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            An invitation will be sent to this user. They can accept or reject it.
+          </p>
+        </div>
+
+        <div className="flex justify-end space-x-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="btn-secondary"
+            disabled={isSending}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="btn-primary"
+            disabled={isSending}
+          >
+            {isSending ? 'Sending...' : 'Send Invitation'}
           </button>
         </div>
       </form>

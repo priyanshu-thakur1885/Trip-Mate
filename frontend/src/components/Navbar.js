@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import Notifications from './Notifications';
 
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
@@ -35,6 +36,7 @@ const Navbar = () => {
               >
                 + New Trip
               </Link>
+              <Notifications />
               <div className="flex items-center space-x-2">
                 <span className="text-gray-700 text-sm">{user?.name}</span>
                 <button

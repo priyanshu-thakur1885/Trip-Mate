@@ -1,17 +1,16 @@
 import Trip from '../models/Trip.js';
 
-// @desc    Add photo to gallery
+// @desc    Add photo/video to gallery
 // @route   POST /api/gallery/:tripId
 // @access  Private
 export const addPhoto = async (req, res) => {
   try {
-    const { imageUrl } = req.body;
     const { tripId } = req.params;
 
-    if (!imageUrl) {
+    if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: 'Please provide an image URL'
+        message: 'Please provide a file'
       });
     }
 
@@ -34,16 +33,39 @@ export const addPhoto = async (req, res) => {
       });
     }
 
+    // Convert buffer to base64
+    const base64Data = req.file.buffer.toString('base64');
+    
+    // Determine file type
+    const mimeType = req.file.mimetype;
+    const fileType = mimeType.startsWith('image/') ? 'image' : 
+                     mimeType.startsWith('video/') ? 'video' : 'image';
+
+    // Add to gallery
     trip.gallery.push({
-      imageUrl,
+      fileData: base64Data,
+      fileName: req.file.originalname,
+      fileType: fileType,
+      mimeType: mimeType,
       uploadedBy: req.user._id
     });
 
     await trip.save();
 
+    const newPhoto = trip.gallery[trip.gallery.length - 1];
+    
+    // Return file data with data URL for frontend
     res.status(201).json({
       success: true,
-      data: trip.gallery[trip.gallery.length - 1]
+      data: {
+        _id: newPhoto._id,
+        fileData: `data:${mimeType};base64,${base64Data}`,
+        fileName: newPhoto.fileName,
+        fileType: newPhoto.fileType,
+        mimeType: newPhoto.mimeType,
+        uploadedAt: newPhoto.uploadedAt,
+        uploadedBy: newPhoto.uploadedBy
+      }
     });
   } catch (error) {
     res.status(500).json({

@@ -12,5 +12,8 @@ export const authAPI = {
 
   logout: () =>
     client.post('/auth/logout'),
+
+  searchUsers: (email) =>
+    client.get('/auth/search', { params: { email } }),
 };
 
