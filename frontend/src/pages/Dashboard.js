@@ -59,8 +59,8 @@ const Dashboard = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">My Trips</h1>
-        <p className="text-gray-600">Manage and track all your travel adventures</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">My Trips</h1>
+        <p className="text-gray-600 dark:text-gray-400">Manage and track all your travel adventures</p>
       </div>
 
       {/* Stats Cards */}
@@ -80,7 +80,7 @@ const Dashboard = () => {
             <div>
               <p className="text-purple-100 text-sm font-medium">Total Budget</p>
               <p className="text-3xl font-bold mt-1">
-                ${stats.totalExpenses.toLocaleString()}
+                ₹{stats.totalExpenses.toLocaleString()}
               </p>
             </div>
             <div className="text-4xl">💰</div>
@@ -96,7 +96,7 @@ const Dashboard = () => {
               </p>
               {stats.topSpendingTrip && (
                 <p className="text-green-100 text-sm">
-                  ${stats.topSpendingTrip.budget?.toLocaleString()}
+                  ₹{stats.topSpendingTrip.budget?.toLocaleString()}
                 </p>
               )}
             </div>
@@ -122,7 +122,7 @@ const Dashboard = () => {
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               filter === 'all'
                 ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
           >
             All
@@ -132,7 +132,7 @@ const Dashboard = () => {
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               filter === 'upcoming'
                 ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
           >
             Upcoming
@@ -142,7 +142,7 @@ const Dashboard = () => {
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               filter === 'ongoing'
                 ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
           >
             Ongoing
@@ -152,7 +152,7 @@ const Dashboard = () => {
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               filter === 'past'
                 ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
             }`}
           >
             Past
@@ -170,8 +170,8 @@ const Dashboard = () => {
       ) : trips.length === 0 ? (
         <div className="text-center py-12">
           <div className="text-6xl mb-4">✈️</div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">No trips found</h3>
-          <p className="text-gray-600 mb-6">
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">No trips found</h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
             {search || filter !== 'all'
               ? 'Try adjusting your search or filters'
               : 'Start planning your first trip!'}

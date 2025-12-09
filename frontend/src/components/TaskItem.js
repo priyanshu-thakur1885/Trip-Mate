@@ -25,14 +25,14 @@ const TaskItem = ({ task, onToggle, onEdit, onDelete, canEdit, participants }) =
           <p
             className={`font-medium ${
               task.status === 'complete'
-                ? 'line-through text-gray-500'
-                : 'text-gray-900'
+                ? 'line-through text-gray-500 dark:text-gray-500'
+                : 'text-gray-900 dark:text-gray-100'
             }`}
           >
             {task.task}
           </p>
           {assignedUser && (
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
               👤 Assigned to: {assignedUser.name}
             </p>
           )}
@@ -41,13 +41,13 @@ const TaskItem = ({ task, onToggle, onEdit, onDelete, canEdit, participants }) =
           <div className="flex space-x-2">
             <button
               onClick={() => onEdit(task)}
-              className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm font-medium"
             >
               Edit
             </button>
             <button
               onClick={() => onDelete(task._id)}
-              className="text-red-600 hover:text-red-800 text-sm font-medium"
+              className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 text-sm font-medium"
             >
               Delete
             </button>

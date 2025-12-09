@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 const GalleryGrid = ({ photos, onDelete, canEdit }) => {
   const [selectedMedia, setSelectedMedia] = useState(null);
   const [selectedMediaType, setSelectedMediaType] = useState(null);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
 
   if (photos.length === 0) {
     return (
@@ -41,6 +42,26 @@ const GalleryGrid = ({ photos, onDelete, canEdit }) => {
     const source = getMediaSource(photo);
     setSelectedMedia(source);
     setSelectedMediaType(photo.fileType || 'image');
+    setSelectedPhoto(photo);
+  };
+
+  const handleDownload = (e) => {
+    e.stopPropagation();
+    if (!selectedMedia || !selectedPhoto) return;
+
+    try {
+      // Create a temporary anchor element
+      const link = document.createElement('a');
+      link.href = selectedMedia;
+      link.download = selectedPhoto.fileName || `trip-photo-${selectedPhoto._id}.${selectedPhoto.mimeType?.includes('video') ? 'mp4' : 'jpg'}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      // Fallback: open in new tab
+      window.open(selectedMedia, '_blank');
+    }
   };
 
   return (
@@ -93,34 +114,60 @@ const GalleryGrid = ({ photos, onDelete, canEdit }) => {
           onClick={() => {
             setSelectedMedia(null);
             setSelectedMediaType(null);
+            setSelectedPhoto(null);
           }}
         >
-          <div className="max-w-4xl max-h-full relative">
-            {selectedMediaType === 'video' ? (
-              <video
-                src={selectedMedia}
-                controls
-                autoPlay
-                className="max-w-full max-h-full rounded-lg"
-                onClick={(e) => e.stopPropagation()}
-              />
-            ) : (
-              <img
-                src={selectedMedia}
-                alt="Full size"
-                className="max-w-full max-h-full rounded-lg"
-                onClick={(e) => e.stopPropagation()}
-              />
-            )}
-            <button
-              onClick={() => {
-                setSelectedMedia(null);
-                setSelectedMediaType(null);
-              }}
-              className="absolute top-4 right-4 text-white text-2xl font-bold hover:text-gray-300 bg-black bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center"
-            >
-              ✕
-            </button>
+          <div className="relative w-full h-full flex items-center justify-center">
+            <div className="relative max-w-[90vw] max-h-[90vh] flex items-center justify-center">
+              {selectedMediaType === 'video' ? (
+                <video
+                  src={selectedMedia}
+                  controls
+                  autoPlay
+                  className="max-w-full max-h-[90vh] w-auto h-auto rounded-lg object-contain"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : (
+                <img
+                  src={selectedMedia}
+                  alt="Full size"
+                  className="max-w-full max-h-[90vh] w-auto h-auto rounded-lg object-contain"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              )}
+            </div>
+            <div className="absolute top-4 right-4 flex space-x-2">
+              <button
+                onClick={handleDownload}
+                className="text-white bg-black bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-70 transition-all"
+                title="Download"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                  />
+                </svg>
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedMedia(null);
+                  setSelectedMediaType(null);
+                  setSelectedPhoto(null);
+                }}
+                className="text-white text-2xl font-bold hover:text-gray-300 bg-black bg-opacity-50 rounded-full w-10 h-10 flex items-center justify-center hover:bg-opacity-70 transition-all"
+                title="Close"
+              >
+                ✕
+              </button>
+            </div>
           </div>
         </div>
       )}

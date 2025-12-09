@@ -48,13 +48,13 @@ const ExpenseChart = ({ expenses }) => {
                   <Cell key={`cell-${index}`} fill={COLORS[index]} />
                 ))}
               </Pie>
-              <Tooltip formatter={(value) => `$${value.toLocaleString()}`} />
+              <Tooltip formatter={(value) => `₹${value.toLocaleString()}`} />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
           <div className="mt-4 text-center">
             <p className="text-2xl font-bold text-gray-900">
-              Total: ${total.toLocaleString()}
+              Total: ₹{total.toLocaleString()}
             </p>
           </div>
         </div>

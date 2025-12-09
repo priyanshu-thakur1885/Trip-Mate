@@ -8,3 +8,4 @@ export const notificationsAPI = {
   delete: (id) => client.delete(`/notifications/${id}`),
 };
 
+

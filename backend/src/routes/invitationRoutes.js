@@ -16,3 +16,4 @@ router.post('/:id/reject', rejectInvitation);
 
 export default router;
 
+

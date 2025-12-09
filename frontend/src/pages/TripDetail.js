@@ -109,29 +109,52 @@ const TripDetail = () => {
   // Itinerary handlers
   const handleAddItinerary = async (itineraryData) => {
     try {
+      let response;
       if (editingItem) {
-        await itineraryAPI.update(editingItem._id, itineraryData);
-        toast.success('Itinerary updated');
+        response = await itineraryAPI.update(editingItem._id, itineraryData);
+        if (response.data.success) {
+          toast.success('Itinerary updated');
+        } else {
+          throw new Error(response.data.message || 'Failed to update itinerary');
+        }
       } else {
-        await itineraryAPI.create(id, itineraryData);
-        toast.success('Itinerary item added');
+        response = await itineraryAPI.create(id, itineraryData);
+        if (response.data.success) {
+          toast.success('Itinerary item added');
+        } else {
+          throw new Error(response.data.message || 'Failed to create itinerary');
+        }
       }
       setShowItineraryModal(false);
       setEditingItem(null);
-      fetchTripData();
+      // Refresh data separately - don't let fetchTripData errors affect the success message
+      fetchTripData().catch((error) => {
+        // Silently handle fetch errors - the save was successful
+        console.error('Failed to refresh trip data:', error);
+      });
     } catch (error) {
-      toast.error('Failed to save itinerary');
+      console.error('Error saving itinerary:', error);
+      toast.error(error.response?.data?.message || error.message || 'Failed to save itinerary');
     }
   };
 
   const handleDeleteItinerary = async (itineraryId) => {
     if (window.confirm('Are you sure you want to delete this item?')) {
       try {
-        await itineraryAPI.delete(itineraryId);
-        toast.success('Item deleted');
-        fetchTripData();
+        const response = await itineraryAPI.delete(itineraryId);
+        if (response.data.success) {
+          toast.success('Item deleted');
+          // Refresh data separately - don't let fetchTripData errors affect the success message
+          fetchTripData().catch((error) => {
+            // Silently handle fetch errors - the delete was successful
+            console.error('Failed to refresh trip data:', error);
+          });
+        } else {
+          throw new Error(response.data.message || 'Failed to delete item');
+        }
       } catch (error) {
-        toast.error('Failed to delete item');
+        console.error('Error deleting itinerary:', error);
+        toast.error(error.response?.data?.message || error.message || 'Failed to delete item');
       }
     }
   };
@@ -271,7 +294,7 @@ const TripDetail = () => {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900">Trip not found</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Trip not found</h2>
           <button onClick={() => navigate('/dashboard')} className="btn-primary mt-4">
             Back to Dashboard
           </button>
@@ -290,7 +313,7 @@ const TripDetail = () => {
       <div className="mb-6">
         <button
           onClick={() => navigate('/dashboard')}
-          className="text-blue-600 hover:text-blue-800 mb-4 flex items-center"
+          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 mb-4 flex items-center"
         >
           ← Back to Dashboard
         </button>
@@ -305,9 +328,9 @@ const TripDetail = () => {
         )}
         <div className="flex justify-between items-start">
           <div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">{trip.title}</h1>
-            <p className="text-xl text-gray-600 mb-4">📍 {trip.destination}</p>
-            <div className="flex items-center space-x-4 text-sm text-gray-600">
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-2">{trip.title}</h1>
+            <p className="text-xl text-gray-600 dark:text-gray-400 mb-4">📍 {trip.destination}</p>
+            <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
               <span>📅 {format(new Date(trip.startDate), 'MMM dd, yyyy')}</span>
               <span>→</span>
               <span>{format(new Date(trip.endDate), 'MMM dd, yyyy')}</span>
@@ -317,7 +340,7 @@ const TripDetail = () => {
             {!isCreator && canEdit && (
               <button
                 onClick={handleLeaveTrip}
-                className="text-orange-600 hover:text-orange-800 font-medium"
+                className="text-orange-600 dark:text-orange-400 hover:text-orange-800 dark:hover:text-orange-300 font-medium"
               >
                 Leave Trip
               </button>
@@ -325,7 +348,7 @@ const TripDetail = () => {
             {isCreator && (
               <button
                 onClick={handleDeleteTrip}
-                className="text-red-600 hover:text-red-800 font-medium"
+                className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 font-medium"
               >
                 Delete Trip
               </button>
@@ -333,12 +356,12 @@ const TripDetail = () => {
           </div>
         </div>
         {trip.description && (
-          <p className="mt-4 text-gray-700">{trip.description}</p>
+          <p className="mt-4 text-gray-700 dark:text-gray-300">{trip.description}</p>
         )}
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 mb-6">
+      <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
         <nav className="flex space-x-8">
           {['overview', 'expenses', 'itinerary', 'tasks', 'gallery', 'chat'].map((tab) => (
             <button
@@ -346,8 +369,8 @@ const TripDetail = () => {
               onClick={() => setActiveTab(tab)}
               className={`py-4 px-1 border-b-2 font-medium text-sm capitalize ${
                 activeTab === tab
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
               }`}
             >
               {tab}
@@ -362,28 +385,28 @@ const TripDetail = () => {
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="card">
-                <h3 className="text-lg font-semibold text-gray-700 mb-2">Total Budget</h3>
+                <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">Total Budget</h3>
                 <p className="text-3xl font-bold text-blue-600">
-                  ${trip.budget?.toLocaleString() || '0'}
+                  ₹{trip.budget?.toLocaleString() || '0'}
                 </p>
               </div>
               <div className="card">
-                <h3 className="text-lg font-semibold text-gray-700 mb-2">Total Expenses</h3>
+                <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">Total Expenses</h3>
                 <p className="text-3xl font-bold text-purple-600">
-                  ${totalExpenses.toLocaleString()}
+                  ₹{totalExpenses.toLocaleString()}
                 </p>
               </div>
               <div className="card">
-                <h3 className="text-lg font-semibold text-gray-700 mb-2">Remaining</h3>
+                <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">Remaining</h3>
                 <p className="text-3xl font-bold text-green-600">
-                  ${((trip.budget || 0) - totalExpenses).toLocaleString()}
+                  ₹{((trip.budget || 0) - totalExpenses).toLocaleString()}
                 </p>
               </div>
             </div>
 
             <div className="card">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold text-gray-900">Participants</h3>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">Participants</h3>
                 {isCreator && (
                   <button
                     onClick={() => setShowAddParticipantModal(true)}
@@ -402,7 +425,7 @@ const TripDetail = () => {
                     <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-semibold">
                       {participant.name?.charAt(0).toUpperCase()}
                     </div>
-                    <span className="font-medium text-gray-900">{participant.name}</span>
+                    <span className="font-medium text-gray-900 dark:text-gray-100">{participant.name}</span>
                     {participant._id === trip.createdBy?._id && (
                       <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded">
                         Creator
@@ -425,7 +448,7 @@ const TripDetail = () => {
             <div className="card">
               <h3 className="text-xl font-bold text-gray-900 mb-4">Tasks Progress</h3>
               <div className="flex items-center space-x-4">
-                <div className="flex-1 bg-gray-200 rounded-full h-4">
+                <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-4">
                   <div
                     className="bg-green-600 h-4 rounded-full transition-all"
                     style={{
@@ -433,7 +456,7 @@ const TripDetail = () => {
                     }}
                   ></div>
                 </div>
-                <span className="text-sm font-semibold text-gray-700">
+                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                   {completedTasks} / {totalTasks} completed
                 </span>
               </div>
@@ -444,7 +467,7 @@ const TripDetail = () => {
         {activeTab === 'expenses' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-gray-900">Expenses</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Expenses</h2>
               {canEdit && (
                 <button
                   onClick={() => {
@@ -463,7 +486,7 @@ const TripDetail = () => {
             <div>
               <h3 className="text-xl font-bold text-gray-900 mb-4">Expense List</h3>
               {expenses.length === 0 ? (
-                <div className="text-center py-12 text-gray-500">
+                <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                   <p>No expenses yet. Add your first expense!</p>
                 </div>
               ) : (
@@ -499,7 +522,7 @@ const TripDetail = () => {
         {activeTab === 'itinerary' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-gray-900">Itinerary</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Itinerary</h2>
               {canEdit && (
                 <button
                   onClick={() => {
@@ -514,7 +537,7 @@ const TripDetail = () => {
             </div>
 
             {itinerary.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
+              <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                 <p>No itinerary items yet. Start planning your trip!</p>
               </div>
             ) : (
@@ -548,7 +571,7 @@ const TripDetail = () => {
         {activeTab === 'tasks' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-gray-900">Tasks & Checklist</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Tasks & Checklist</h2>
               {canEdit && (
                 <button
                   onClick={() => {
@@ -563,7 +586,7 @@ const TripDetail = () => {
             </div>
 
             {tasks.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
+              <div className="text-center py-12 text-gray-500 dark:text-gray-400">
                 <p>No tasks yet. Create your first task!</p>
               </div>
             ) : (
@@ -602,7 +625,7 @@ const TripDetail = () => {
         {activeTab === 'gallery' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-gray-900">Photo Gallery</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Photo Gallery</h2>
               {canEdit && (
                 <button
                   onClick={() => setShowGalleryModal(true)}
@@ -631,7 +654,7 @@ const TripDetail = () => {
         {activeTab === 'chat' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold text-gray-900">Trip Chat</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Trip Chat</h2>
             </div>
             <Chat tripId={id} />
           </div>
@@ -669,7 +692,7 @@ const ExpenseModal = ({ expense, onClose, onSave, participants }) => {
     <Modal onClose={onClose} title={expense ? 'Edit Expense' : 'Add Expense'}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title</label>
           <input
             type="text"
             required
@@ -679,7 +702,7 @@ const ExpenseModal = ({ expense, onClose, onSave, participants }) => {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount</label>
           <input
             type="number"
             step="0.01"
@@ -691,7 +714,7 @@ const ExpenseModal = ({ expense, onClose, onSave, participants }) => {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category</label>
           <select
             className="input-field"
             value={formData.category}
@@ -706,7 +729,7 @@ const ExpenseModal = ({ expense, onClose, onSave, participants }) => {
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
           <input
             type="date"
             required
@@ -745,7 +768,7 @@ const ItineraryModal = ({ item, onClose, onSave }) => {
     <Modal onClose={onClose} title={item ? 'Edit Itinerary' : 'Add Itinerary'}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Day</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Day</label>
           <input
             type="number"
             min="1"
@@ -756,7 +779,7 @@ const ItineraryModal = ({ item, onClose, onSave }) => {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Activity</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Activity</label>
           <input
             type="text"
             required
@@ -766,7 +789,7 @@ const ItineraryModal = ({ item, onClose, onSave }) => {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Time</label>
           <input
             type="text"
             required
@@ -777,7 +800,7 @@ const ItineraryModal = ({ item, onClose, onSave }) => {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes</label>
           <textarea
             className="input-field"
             rows="3"
@@ -831,7 +854,7 @@ const TaskModal = ({ task, onClose, onSave, participants }) => {
     <Modal onClose={onClose} title={task ? 'Edit Task' : 'Add Task'}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Task</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Task</label>
           <input
             type="text"
             required
@@ -841,7 +864,7 @@ const TaskModal = ({ task, onClose, onSave, participants }) => {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Assign To</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Assign To</label>
           <select
             className="input-field"
             value={formData.assignedTo}
@@ -856,7 +879,7 @@ const TaskModal = ({ task, onClose, onSave, participants }) => {
           </select>
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
           <select
             className="input-field"
             value={formData.status}
@@ -867,7 +890,7 @@ const TaskModal = ({ task, onClose, onSave, participants }) => {
             <option value="complete">Complete</option>
           </select>
           {task && task.status === 'pending' && !isAssignedUser && task.assignedTo && (
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Only {task.assignedTo.name} can mark this task as complete
             </p>
           )}
@@ -929,23 +952,33 @@ const GalleryModal = ({ onClose, onSave }) => {
         try {
           setIsConverting(true);
           
+          // Read file as ArrayBuffer first, then create Blob
+          const arrayBuffer = await selectedFile.arrayBuffer();
+          const fileBlob = new Blob([arrayBuffer], { type: selectedFile.type || 'image/heic' });
+          
           // Dynamic import of heic2any
           const heic2anyModule = await import('heic2any');
-          const convert = heic2anyModule.default || heic2anyModule;
+          const heic2any = heic2anyModule.default || heic2anyModule;
           
-          const result = await convert(selectedFile, {
+          if (!heic2any || typeof heic2any !== 'function') {
+            throw new Error('heic2any library not available or invalid');
+          }
+          
+          // heic2any expects { blob: Blob, toType: string }
+          const result = await heic2any({
+            blob: fileBlob,
             toType: 'image/jpeg',
             quality: 0.9
           });
           
           // Handle both single blob and array of blobs
           let blob = result;
-          if (Array.isArray(result)) {
+          if (Array.isArray(result) && result.length > 0) {
             blob = result[0];
           }
           
-          if (!blob) {
-            throw new Error('Conversion returned empty result');
+          if (!blob || !(blob instanceof Blob)) {
+            throw new Error('Conversion returned invalid result');
           }
           
           // Convert blob to file
@@ -971,9 +1004,10 @@ const GalleryModal = ({ onClose, onSave }) => {
           reader.readAsDataURL(convertedFile);
         } catch (error) {
           console.error('Error converting HEIC:', error);
-          toast.error(`HEIC conversion failed: ${error.message}. Please try converting the file to JPEG first.`);
+          const errorMsg = error.message || 'Unknown error';
+          toast.error(`HEIC conversion failed: ${errorMsg}. Please convert the file to JPEG using your device's photo app first.`);
           setIsConverting(false);
-          // Clear the file input
+          // Clear the file input so user can try again
           e.target.value = '';
           setFile(null);
           setPreview(null);
@@ -1014,7 +1048,7 @@ const GalleryModal = ({ onClose, onSave }) => {
     <Modal onClose={onClose} title="Add Photo/Video">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Select Photo or Video
           </label>
           <input
@@ -1101,7 +1135,7 @@ const AddParticipantModal = ({ onClose, onInvite }) => {
     <Modal onClose={onClose} title="Invite Participant">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Enter Registered Email
           </label>
           <input
@@ -1143,12 +1177,12 @@ const AddParticipantModal = ({ onClose, onInvite }) => {
 const Modal = ({ onClose, title, children }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xl font-bold text-gray-900">{title}</h3>
+          <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">{title}</h3>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-2xl"
+            className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 text-2xl"
           >
             ×
           </button>

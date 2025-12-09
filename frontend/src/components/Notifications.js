@@ -130,7 +130,7 @@ const Notifications = () => {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-gray-600 hover:text-gray-900 focus:outline-none"
+        className="relative p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 focus:outline-none"
       >
         <svg
           className="w-6 h-6"
@@ -153,13 +153,13 @@ const Notifications = () => {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl z-50 border border-gray-200 max-h-96 overflow-hidden flex flex-col">
-          <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-            <h3 className="font-semibold text-gray-900">Notifications</h3>
+        <div className="absolute right-0 mt-2 w-96 bg-white dark:bg-gray-800 rounded-lg shadow-xl z-50 border border-gray-200 dark:border-gray-700 max-h-96 overflow-hidden flex flex-col">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">Notifications</h3>
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAllAsRead}
-                className="text-sm text-blue-600 hover:text-blue-800"
+                className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
               >
                 Mark all as read
               </button>
@@ -168,7 +168,7 @@ const Notifications = () => {
 
           <div className="overflow-y-auto flex-1">
             {notifications.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
+              <div className="p-8 text-center text-gray-500 dark:text-gray-400">
                 <p>No notifications</p>
               </div>
             ) : (
@@ -176,25 +176,25 @@ const Notifications = () => {
                 {notifications.map((notification) => (
                   <div
                     key={notification._id}
-                    className={`p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
-                      !notification.read ? 'bg-blue-50' : ''
+                    className={`p-4 border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer ${
+                      !notification.read ? 'bg-blue-50 dark:bg-blue-900/30' : ''
                     }`}
                     onClick={() => handleNotificationClick(notification)}
                   >
                     <div className="flex items-start space-x-3">
                       <div className="flex-1">
-                        <p className="font-medium text-gray-900 text-sm">
+                        <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">
                           {notification.title}
                         </p>
-                        <p className="text-sm text-gray-600 mt-1">
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                           {notification.message}
                         </p>
-                        <p className="text-xs text-gray-400 mt-2">
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
                           {format(new Date(notification.createdAt), 'MMM d, h:mm a')}
                         </p>
                       </div>
                       {!notification.read && (
-                        <div className="w-2 h-2 bg-blue-600 rounded-full mt-2"></div>
+                        <div className="w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full mt-2"></div>
                       )}
                     </div>
 

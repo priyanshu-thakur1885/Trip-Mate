@@ -6,3 +6,4 @@ export const invitationsAPI = {
   reject: (id) => client.post(`/invitations/${id}/reject`),
 };
 
+

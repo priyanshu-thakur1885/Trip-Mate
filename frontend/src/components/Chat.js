@@ -160,14 +160,14 @@ const Chat = ({ tripId }) => {
   };
 
   return (
-    <div className="flex flex-col h-[600px] bg-white rounded-lg border border-gray-200">
+    <div className="flex flex-col h-[600px] bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
       {/* Messages Area */}
       <div
         ref={chatContainerRef}
         className="flex-1 overflow-y-auto p-4 space-y-4"
       >
         {messages.length === 0 ? (
-          <div className="text-center text-gray-500 py-8">
+          <div className="text-center text-gray-500 dark:text-gray-400 py-8">
             <p>No messages yet. Start the conversation!</p>
           </div>
         ) : (
@@ -182,8 +182,8 @@ const Chat = ({ tripId }) => {
                   <div
                     className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
                       isOwnMessage
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-100 text-gray-900'
+                        ? 'bg-blue-600 dark:bg-blue-500 text-white'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100'
                     }`}
                   >
                     {!isOwnMessage && (
@@ -221,7 +221,7 @@ const Chat = ({ tripId }) => {
                   {isOwnMessage && (
                     <button
                       onClick={() => handleUnsendMessage(message._id)}
-                      className="absolute -left-8 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-red-100 text-red-600"
+                      className="absolute -left-8 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900 text-red-600 dark:text-red-400"
                       title="Delete message"
                     >
                       <svg
@@ -248,10 +248,10 @@ const Chat = ({ tripId }) => {
       </div>
 
       {/* Input Area */}
-      <div className="border-t border-gray-200 p-4">
+      <div className="border-t border-gray-200 dark:border-gray-700 p-4">
         {isRecording && (
-          <div className="mb-2 flex items-center justify-center space-x-2 text-red-600">
-            <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse"></div>
+          <div className="mb-2 flex items-center justify-center space-x-2 text-red-600 dark:text-red-400">
+            <div className="w-3 h-3 bg-red-600 dark:bg-red-500 rounded-full animate-pulse"></div>
             <span className="text-sm">Recording... Click to stop</span>
           </div>
         )}
@@ -261,7 +261,7 @@ const Chat = ({ tripId }) => {
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Type a message..."
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
             disabled={isRecording}
           />
           <button
@@ -269,8 +269,8 @@ const Chat = ({ tripId }) => {
             onClick={isRecording ? stopRecording : startRecording}
             className={`px-4 py-2 rounded-lg font-medium ${
               isRecording
-                ? 'bg-red-600 text-white hover:bg-red-700'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                ? 'bg-red-600 dark:bg-red-500 text-white hover:bg-red-700 dark:hover:bg-red-600'
+                : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
             }`}
             title={isRecording ? 'Stop Recording' : 'Record Voice Message'}
           >
