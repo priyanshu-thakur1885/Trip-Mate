@@ -16,11 +16,22 @@ const GalleryGrid = ({ photos, onDelete, canEdit }) => {
   const getMediaSource = (photo) => {
     // If fileData is already a data URL, use it directly
     if (photo.fileData && photo.fileData.startsWith('data:')) {
+      // Check if it's HEIC and try to handle it
+      const mimeType = photo.fileData.split(';')[0].split(':')[1];
+      if (mimeType === 'image/heic' || mimeType === 'image/heif') {
+        // For HEIC files, we'll try to display as JPEG (they should be converted on upload)
+        return photo.fileData.replace(/image\/(heic|heif)/, 'image/jpeg');
+      }
       return photo.fileData;
     }
     // Otherwise, construct the data URL from mimeType and fileData
     if (photo.fileData && photo.mimeType) {
-      return `data:${photo.mimeType};base64,${photo.fileData}`;
+      // Handle HEIC mime types - convert to JPEG for display
+      let displayMimeType = photo.mimeType;
+      if (photo.mimeType === 'image/heic' || photo.mimeType === 'image/heif') {
+        displayMimeType = 'image/jpeg';
+      }
+      return `data:${displayMimeType};base64,${photo.fileData}`;
     }
     // Fallback for old data structure (imageUrl)
     return photo.imageUrl || '';

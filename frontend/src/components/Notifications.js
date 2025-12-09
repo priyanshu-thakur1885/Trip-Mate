@@ -216,6 +216,17 @@ const Notifications = () => {
                         </button>
                       </div>
                     )}
+                    {notification.type === 'task_assigned' && notification.tripId && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleNotificationClick(notification);
+                        }}
+                        className="mt-3 w-full bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700"
+                      >
+                        View Task
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

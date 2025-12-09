@@ -33,6 +33,10 @@ const Chat = ({ tripId }) => {
       scrollToBottom();
     });
 
+    newSocket.on('message_deleted', ({ messageId }) => {
+      setMessages((prev) => prev.filter((msg) => msg._id !== messageId));
+    });
+
     newSocket.on('error', (error) => {
       toast.error(error.message || 'Socket error');
     });
@@ -135,6 +139,26 @@ const Chat = ({ tripId }) => {
     });
   };
 
+  const handleUnsendMessage = async (messageId) => {
+    if (!window.confirm('Are you sure you want to delete this message?')) {
+      return;
+    }
+
+    if (!socket) {
+      toast.error('Connection error');
+      return;
+    }
+
+    try {
+      socket.emit('unsend_message', {
+        tripId,
+        messageId
+      });
+    } catch (error) {
+      toast.error('Failed to delete message');
+    }
+  };
+
   return (
     <div className="flex flex-col h-[600px] bg-white rounded-lg border border-gray-200">
       {/* Messages Area */}
@@ -152,46 +176,69 @@ const Chat = ({ tripId }) => {
             return (
               <div
                 key={message._id}
-                className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'} group`}
               >
-                <div
-                  className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                    isOwnMessage
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-900'
-                  }`}
-                >
-                  {!isOwnMessage && (
-                    <p className="text-xs font-semibold mb-1 opacity-75">
-                      {message.sender.name}
-                    </p>
-                  )}
-                  {message.messageType === 'text' ? (
-                    <p className="text-sm">{message.message}</p>
-                  ) : (
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={() => playVoiceMessage(message.voiceUrl)}
-                        className="flex items-center space-x-2 px-3 py-1 bg-white bg-opacity-20 rounded hover:bg-opacity-30"
-                      >
-                        <svg
-                          className="w-5 h-5"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
+                <div className="relative">
+                  <div
+                    className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                      isOwnMessage
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-900'
+                    }`}
+                  >
+                    {!isOwnMessage && (
+                      <p className="text-xs font-semibold mb-1 opacity-75">
+                        {message.sender.name}
+                      </p>
+                    )}
+                    {message.messageType === 'text' ? (
+                      <p className="text-sm">{message.message}</p>
+                    ) : (
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => playVoiceMessage(message.voiceUrl)}
+                          className="flex items-center space-x-2 px-3 py-1 bg-white bg-opacity-20 rounded hover:bg-opacity-30"
                         >
-                          <path
-                            fillRule="evenodd"
-                            d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                        <span className="text-xs">Play</span>
-                      </button>
-                    </div>
+                          <svg
+                            className="w-5 h-5"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          <span className="text-xs">Play</span>
+                        </button>
+                      </div>
+                    )}
+                    <p className="text-xs mt-1 opacity-75">
+                      {format(new Date(message.createdAt), 'h:mm a')}
+                    </p>
+                  </div>
+                  {isOwnMessage && (
+                    <button
+                      onClick={() => handleUnsendMessage(message._id)}
+                      className="absolute -left-8 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-red-100 text-red-600"
+                      title="Delete message"
+                    >
+                      <svg
+                        className="w-4 h-4"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
+                    </button>
                   )}
-                  <p className="text-xs mt-1 opacity-75">
-                    {format(new Date(message.createdAt), 'h:mm a')}
-                  </p>
                 </div>
               </div>
             );

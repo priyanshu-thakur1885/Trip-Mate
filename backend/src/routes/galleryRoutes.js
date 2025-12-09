@@ -10,12 +10,25 @@ const router = express.Router();
 
 router.use(protect); // All routes require authentication
 
-// File filter to accept only images and videos
+// File filter to accept images and videos including HEIC, MOV, JPG, PNG
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+  // Check by MIME type
+  const isValidMimeType = 
+    file.mimetype.startsWith('image/') || 
+    file.mimetype.startsWith('video/') ||
+    file.mimetype === 'image/heic' ||
+    file.mimetype === 'image/heif' ||
+    file.mimetype === 'video/quicktime';
+
+  // Check by file extension (for cases where MIME type might not be recognized)
+  const fileExtension = file.originalname.toLowerCase().split('.').pop();
+  const validExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif', 'mov', 'mp4', 'avi', 'mkv', 'webm'];
+  const isValidExtension = validExtensions.includes(fileExtension);
+
+  if (isValidMimeType || isValidExtension) {
     cb(null, true);
   } else {
-    cb(new Error('Only image and video files are allowed'), false);
+    cb(new Error('Only image and video files are allowed (JPG, PNG, HEIC, MOV, MP4, etc.)'), false);
   }
 };
 

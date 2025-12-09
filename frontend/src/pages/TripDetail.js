@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import { convert } from 'heic2any';
 import { tripsAPI } from '../api/trips';
 import { expensesAPI } from '../api/expenses';
 import { itineraryAPI } from '../api/itinerary';
@@ -34,6 +35,13 @@ const TripDetail = () => {
 
   useEffect(() => {
     fetchTripData();
+    
+    // Check for tab parameter in URL (for navigation from notifications)
+    const urlParams = new URLSearchParams(window.location.search);
+    const tab = urlParams.get('tab');
+    if (tab && ['overview', 'expenses', 'itinerary', 'tasks', 'gallery', 'chat'].includes(tab)) {
+      setActiveTab(tab);
+    }
   }, [id]);
 
   const fetchTripData = async () => {
@@ -784,14 +792,28 @@ const ItineraryModal = ({ item, onClose, onSave }) => {
 };
 
 const TaskModal = ({ task, onClose, onSave, participants }) => {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     task: task?.task || '',
     assignedTo: task?.assignedTo?._id || '',
     status: task?.status || 'pending',
   });
 
+  // Check if current user is the assigned person
+  const isAssignedUser = task?.assignedTo?._id === user?._id;
+  const canChangeStatus = !task || !task.assignedTo || isAssignedUser || task.status === 'complete';
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    // If trying to change status from pending to complete, verify user is assigned
+    if (task && task.status === 'pending' && formData.status === 'complete') {
+      if (!isAssignedUser) {
+        toast.error('Only the assigned person can mark this task as complete');
+        return;
+      }
+    }
+    
     onSave({
       ...formData,
       assignedTo: formData.assignedTo || null,
@@ -832,10 +854,16 @@ const TaskModal = ({ task, onClose, onSave, participants }) => {
             className="input-field"
             value={formData.status}
             onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+            disabled={!canChangeStatus && task?.status === 'pending'}
           >
             <option value="pending">Pending</option>
             <option value="complete">Complete</option>
           </select>
+          {task && task.status === 'pending' && !isAssignedUser && task.assignedTo && (
+            <p className="text-xs text-gray-500 mt-1">
+              Only {task.assignedTo.name} can mark this task as complete
+            </p>
+          )}
         </div>
         <div className="flex justify-end space-x-4">
           <button type="button" onClick={onClose} className="btn-secondary">
@@ -854,13 +882,27 @@ const GalleryModal = ({ onClose, onSave }) => {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isConverting, setIsConverting] = useState(false);
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const selectedFile = e.target.files[0];
     if (selectedFile) {
-      // Validate file type
-      if (!selectedFile.type.startsWith('image/') && !selectedFile.type.startsWith('video/')) {
-        alert('Please select an image or video file');
+      // Get file extension
+      const fileExtension = selectedFile.name.toLowerCase().split('.').pop();
+      const validExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic', 'heif', 'mov', 'mp4', 'avi', 'mkv', 'webm'];
+      
+      // Validate file type by MIME type or extension
+      const isValidMimeType = 
+        selectedFile.type.startsWith('image/') || 
+        selectedFile.type.startsWith('video/') ||
+        selectedFile.type === 'image/heic' ||
+        selectedFile.type === 'image/heif' ||
+        selectedFile.type === 'video/quicktime';
+      
+      const isValidExtension = validExtensions.includes(fileExtension);
+      
+      if (!isValidMimeType && !isValidExtension) {
+        alert('Please select an image or video file (JPG, PNG, HEIC, MOV, MP4, etc.)');
         return;
       }
       
@@ -870,17 +912,58 @@ const GalleryModal = ({ onClose, onSave }) => {
         return;
       }
 
-      setFile(selectedFile);
+      // Check if it's a HEIC/HEIF file
+      const isHeic = ['heic', 'heif'].includes(fileExtension) || 
+                     selectedFile.type === 'image/heic' || 
+                     selectedFile.type === 'image/heif';
       
-      // Create preview for images
-      if (selectedFile.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setPreview(reader.result);
-        };
-        reader.readAsDataURL(selectedFile);
+      if (isHeic) {
+        // Convert HEIC to JPEG for preview and upload
+        try {
+          setIsConverting(true);
+          const convertedBlob = await convert(selectedFile, {
+            toType: 'image/jpeg',
+            quality: 0.9
+          });
+          
+          // Convert blob to file
+          const convertedFile = new File(
+            [convertedBlob instanceof Array ? convertedBlob[0] : convertedBlob],
+            selectedFile.name.replace(/\.(heic|heif)$/i, '.jpg'),
+            { type: 'image/jpeg' }
+          );
+          
+          setFile(convertedFile);
+          
+          // Create preview
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setPreview(reader.result);
+            setIsConverting(false);
+          };
+          reader.readAsDataURL(convertedFile);
+        } catch (error) {
+          console.error('Error converting HEIC:', error);
+          toast.error('Failed to convert HEIC file. Please try a different format.');
+          setIsConverting(false);
+          return;
+        }
       } else {
-        setPreview(null);
+        setFile(selectedFile);
+        
+        // Create preview for images
+        const isImage = selectedFile.type.startsWith('image/') || 
+                       ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(fileExtension);
+        
+        if (isImage) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setPreview(reader.result);
+          };
+          reader.readAsDataURL(selectedFile);
+        } else {
+          setPreview(null);
+        }
       }
     }
   };
@@ -906,21 +989,33 @@ const GalleryModal = ({ onClose, onSave }) => {
           </label>
           <input
             type="file"
-            accept="image/*,video/*"
+            accept="image/*,video/*,.heic,.heif,.mov,.jpg,.jpeg,.png"
             required
             className="input-field"
             onChange={handleFileChange}
+            disabled={isConverting || isUploading}
           />
-          {preview && (
+          {isConverting && (
+            <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-600">
+                Converting HEIC file... Please wait.
+              </p>
+            </div>
+          )}
+          {preview && !isConverting && (
             <div className="mt-4">
               <img
                 src={preview}
                 alt="Preview"
                 className="max-w-full h-48 object-contain rounded-lg border border-gray-300"
+                onError={(e) => {
+                  console.error('Preview image error:', e);
+                  e.target.style.display = 'none';
+                }}
               />
             </div>
           )}
-          {file && !preview && file.type.startsWith('video/') && (
+          {file && !preview && !isConverting && (file.type.startsWith('video/') || ['mov', 'mp4', 'avi', 'mkv', 'webm'].includes(file.name.toLowerCase().split('.').pop())) && (
             <div className="mt-4 p-4 bg-gray-100 rounded-lg">
               <p className="text-sm text-gray-600">
                 Video selected: {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
@@ -940,9 +1035,9 @@ const GalleryModal = ({ onClose, onSave }) => {
           <button
             type="submit"
             className="btn-primary"
-            disabled={isUploading || !file}
+            disabled={isConverting || isUploading || !file}
           >
-            {isUploading ? 'Uploading...' : 'Add Photo/Video'}
+            {isConverting ? 'Converting...' : isUploading ? 'Uploading...' : 'Add Photo/Video'}
           </button>
         </div>
       </form>

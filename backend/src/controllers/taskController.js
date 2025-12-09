@@ -1,5 +1,7 @@
 import Task from '../models/Task.js';
 import Trip from '../models/Trip.js';
+import Notification from '../models/Notification.js';
+import User from '../models/User.js';
 
 // @desc    Create task
 // @route   POST /api/tasks/:tripId
@@ -45,6 +47,21 @@ export const createTask = async (req, res) => {
     // Add to trip
     trip.tasks.push(newTask._id);
     await trip.save();
+
+    // If task is assigned to someone, send notification
+    if (assignedTo && assignedTo.toString() !== req.user._id.toString()) {
+      const assignedUser = await User.findById(assignedTo);
+      if (assignedUser) {
+        await Notification.create({
+          userId: assignedTo,
+          type: 'task_assigned',
+          title: 'New Task Assigned',
+          message: `${req.user.name} assigned you a task: "${task}" for trip "${trip.title}"`,
+          tripId: trip._id,
+          taskId: newTask._id
+        });
+      }
+    }
 
     const populatedTask = await Task.findById(newTask._id)
       .populate('assignedTo', 'name email profilePic');
@@ -128,6 +145,42 @@ export const updateTask = async (req, res) => {
         success: false,
         message: 'Not authorized'
       });
+    }
+
+    // If trying to change status from pending to complete, only assigned user can do it
+    if (req.body.status === 'complete' && task.status === 'pending') {
+      if (!task.assignedTo) {
+        return res.status(400).json({
+          success: false,
+          message: 'Task must be assigned to someone before marking as complete'
+        });
+      }
+
+      if (task.assignedTo.toString() !== req.user._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'Only the assigned person can mark this task as complete'
+        });
+      }
+    }
+
+    // Handle assignment changes - send notification if assigned to someone new
+    const oldAssignedTo = task.assignedTo ? task.assignedTo.toString() : null;
+    const newAssignedTo = req.body.assignedTo ? req.body.assignedTo.toString() : null;
+
+    // If task is being assigned to someone new (and different from current user)
+    if (newAssignedTo && newAssignedTo !== oldAssignedTo && newAssignedTo !== req.user._id.toString()) {
+      const assignedUser = await User.findById(newAssignedTo);
+      if (assignedUser) {
+        await Notification.create({
+          userId: newAssignedTo,
+          type: 'task_assigned',
+          title: 'Task Assigned to You',
+          message: `${req.user.name} assigned you a task: "${req.body.task || task.task}" for trip "${trip.title}"`,
+          tripId: trip._id,
+          taskId: task._id
+        });
+      }
     }
 
     task = await Task.findByIdAndUpdate(

@@ -184,6 +184,60 @@ export const initializeSocket = (server) => {
       }
     });
 
+    // Handle unsend message
+    socket.on('unsend_message', async (data) => {
+      try {
+        const { tripId, messageId } = data;
+
+        if (!tripId || !messageId) {
+          socket.emit('error', { message: 'Invalid data' });
+          return;
+        }
+
+        // Verify trip exists and user has access
+        const trip = await Trip.findById(tripId);
+        if (!trip) {
+          socket.emit('error', { message: 'Trip not found' });
+          return;
+        }
+
+        const hasAccess = trip.createdBy.toString() === socket.userId ||
+          trip.participants.some(p => p.toString() === socket.userId);
+
+        if (!hasAccess) {
+          socket.emit('error', { message: 'Not authorized' });
+          return;
+        }
+
+        // Find the message
+        const message = await Chat.findById(messageId);
+        if (!message) {
+          socket.emit('error', { message: 'Message not found' });
+          return;
+        }
+
+        // Verify message belongs to this trip
+        if (message.tripId.toString() !== tripId) {
+          socket.emit('error', { message: 'Invalid message' });
+          return;
+        }
+
+        // Only the sender can delete their own message
+        if (message.sender.toString() !== socket.userId) {
+          socket.emit('error', { message: 'You can only delete your own messages' });
+          return;
+        }
+
+        // Delete the message
+        await message.deleteOne();
+
+        // Notify all users in the trip room that message was deleted
+        io.to(`trip_${tripId}`).emit('message_deleted', { messageId });
+      } catch (error) {
+        socket.emit('error', { message: error.message });
+      }
+    });
+
     socket.on('disconnect', () => {
       console.log(`User disconnected: ${socket.user.name}`);
     });

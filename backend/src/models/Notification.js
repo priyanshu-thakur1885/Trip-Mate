@@ -9,7 +9,7 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['trip_invitation', 'invitation_accepted', 'invitation_rejected'],
+    enum: ['trip_invitation', 'invitation_accepted', 'invitation_rejected', 'task_assigned'],
     required: true
   },
   title: {
@@ -27,6 +27,10 @@ const notificationSchema = new mongoose.Schema({
   invitationId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Invitation'
+  },
+  taskId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Task'
   },
   read: {
     type: Boolean,
