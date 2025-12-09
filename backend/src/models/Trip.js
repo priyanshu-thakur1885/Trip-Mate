@@ -61,6 +61,9 @@ const tripSchema = new mongoose.Schema({
     fileData: {
       type: String
     },
+    gridfsFileId: {
+      type: mongoose.Schema.Types.ObjectId
+    },
     fileName: {
       type: String
     },

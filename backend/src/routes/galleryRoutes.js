@@ -2,7 +2,8 @@ import express from 'express';
 import multer from 'multer';
 import {
   addPhoto,
-  deletePhoto
+  deletePhoto,
+  getFile
 } from '../controllers/galleryController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -32,15 +33,16 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Use memory storage since we convert to base64 immediately
+// Use memory storage since we convert to base64 or GridFS
 const upload = multer({
   storage: multer.memoryStorage(),
   fileFilter: fileFilter,
   limits: {
-    fileSize: 50 * 1024 * 1024 // 50MB limit
+    fileSize: 100 * 1024 * 1024 // 100MB limit (GridFS can handle larger files)
   }
 });
 
+router.get('/file/:fileId', getFile);
 router.post('/:tripId', upload.single('file'), addPhoto);
 router.delete('/:tripId/:photoId', deletePhoto);
 

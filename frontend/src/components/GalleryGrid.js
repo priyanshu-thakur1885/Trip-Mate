@@ -15,6 +15,10 @@ const GalleryGrid = ({ photos, onDelete, canEdit }) => {
 
   // Helper function to get the media source
   const getMediaSource = (photo) => {
+    // If fileData is already a URL (http/https), use it directly (GridFS files)
+    if (photo.fileData && (photo.fileData.startsWith('http://') || photo.fileData.startsWith('https://'))) {
+      return photo.fileData;
+    }
     // If fileData is already a data URL, use it directly
     if (photo.fileData && photo.fileData.startsWith('data:')) {
       // Check if it's HEIC and try to handle it

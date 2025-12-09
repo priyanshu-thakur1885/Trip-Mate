@@ -134,19 +134,27 @@ export const getTrip = async (req, res) => {
     const tasks = await Task.find({ tripId: trip._id })
       .populate('assignedTo', 'name email profilePic');
 
-    // Transform gallery items to include data URLs
+    // Transform gallery items to include data URLs or GridFS URLs
     const tripData = trip.toObject();
     if (tripData.gallery && tripData.gallery.length > 0) {
       tripData.gallery = tripData.gallery.map(photo => {
+        // If GridFS file ID exists, create URL
+        if (photo.gridfsFileId) {
+          const baseUrl = process.env.API_URL || process.env.BACKEND_URL || 'http://localhost:5000';
+          return {
+            ...photo,
+            fileData: `${baseUrl}/api/gallery/file/${photo.gridfsFileId}`
+          };
+        }
         // If fileData exists and is not already a data URL, convert it
-        if (photo.fileData && !photo.fileData.startsWith('data:')) {
+        if (photo.fileData && !photo.fileData.startsWith('data:') && !photo.fileData.startsWith('http')) {
           return {
             ...photo,
             fileData: `data:${photo.mimeType || 'image/jpeg'};base64,${photo.fileData}`
           };
         }
         // Fallback for old imageUrl format
-        if (photo.imageUrl && !photo.fileData) {
+        if (photo.imageUrl && !photo.fileData && !photo.gridfsFileId) {
           return {
             ...photo,
             fileData: photo.imageUrl,
