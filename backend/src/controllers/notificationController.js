@@ -14,6 +14,7 @@ export const getNotifications = async (req, res) => {
 
     const notifications = await Notification.find(query)
       .populate('tripId', 'title destination')
+      .populate('taskId', 'task status')
       .sort({ createdAt: -1 })
       .limit(50);
 

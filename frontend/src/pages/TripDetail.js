@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { convert } from 'heic2any';
 import { tripsAPI } from '../api/trips';
 import { expensesAPI } from '../api/expenses';
 import { itineraryAPI } from '../api/itinerary';
@@ -158,13 +157,21 @@ const TripDetail = () => {
   const handleToggleTask = async (taskId) => {
     const task = tasks.find((t) => t._id === taskId);
     if (task) {
+      // If trying to mark as complete, check if user is assigned
+      if (task.status === 'pending' && task.assignedTo) {
+        if (task.assignedTo._id !== user?._id) {
+          toast.error('Only the assigned person can mark this task as complete');
+          return;
+        }
+      }
+      
       try {
         await tasksAPI.update(taskId, {
           status: task.status === 'complete' ? 'pending' : 'complete',
         });
         fetchTripData();
       } catch (error) {
-        toast.error('Failed to update task');
+        toast.error(error.response?.data?.message || 'Failed to update task');
       }
     }
   };
@@ -921,16 +928,31 @@ const GalleryModal = ({ onClose, onSave }) => {
         // Convert HEIC to JPEG for preview and upload
         try {
           setIsConverting(true);
-          const convertedBlob = await convert(selectedFile, {
+          
+          // Dynamic import of heic2any
+          const heic2anyModule = await import('heic2any');
+          const convert = heic2anyModule.default || heic2anyModule;
+          
+          const result = await convert(selectedFile, {
             toType: 'image/jpeg',
             quality: 0.9
           });
           
+          // Handle both single blob and array of blobs
+          let blob = result;
+          if (Array.isArray(result)) {
+            blob = result[0];
+          }
+          
+          if (!blob) {
+            throw new Error('Conversion returned empty result');
+          }
+          
           // Convert blob to file
           const convertedFile = new File(
-            [convertedBlob instanceof Array ? convertedBlob[0] : convertedBlob],
+            [blob],
             selectedFile.name.replace(/\.(heic|heif)$/i, '.jpg'),
-            { type: 'image/jpeg' }
+            { type: 'image/jpeg', lastModified: Date.now() }
           );
           
           setFile(convertedFile);
@@ -941,12 +963,20 @@ const GalleryModal = ({ onClose, onSave }) => {
             setPreview(reader.result);
             setIsConverting(false);
           };
+          reader.onerror = () => {
+            console.error('Error reading converted file');
+            toast.error('Failed to preview converted file');
+            setIsConverting(false);
+          };
           reader.readAsDataURL(convertedFile);
         } catch (error) {
           console.error('Error converting HEIC:', error);
-          toast.error('Failed to convert HEIC file. Please try a different format.');
+          toast.error(`HEIC conversion failed: ${error.message}. Please try converting the file to JPEG first.`);
           setIsConverting(false);
-          return;
+          // Clear the file input
+          e.target.value = '';
+          setFile(null);
+          setPreview(null);
         }
       } else {
         setFile(selectedFile);

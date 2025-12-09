@@ -1,7 +1,14 @@
 import React from 'react';
+import { useAuth } from '../context/AuthContext';
 
 const TaskItem = ({ task, onToggle, onEdit, onDelete, canEdit, participants }) => {
+  const { user } = useAuth();
   const assignedUser = participants?.find((p) => p._id === task.assignedTo?._id);
+  
+  // Check if current user is the assigned person
+  const isAssignedUser = task.assignedTo?._id === user?._id;
+  // Only assigned user can mark pending tasks as complete
+  const canToggleToComplete = !task.assignedTo || isAssignedUser || task.status === 'complete';
 
   return (
     <div className="card mb-3 hover:shadow-lg transition-shadow">
@@ -11,7 +18,8 @@ const TaskItem = ({ task, onToggle, onEdit, onDelete, canEdit, participants }) =
           checked={task.status === 'complete'}
           onChange={() => onToggle(task._id)}
           className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500"
-          disabled={!canEdit}
+          disabled={!canEdit || (task.status === 'pending' && !canToggleToComplete)}
+          title={task.status === 'pending' && !canToggleToComplete ? 'Only the assigned person can mark this as complete' : ''}
         />
         <div className="flex-1">
           <p

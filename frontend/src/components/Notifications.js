@@ -75,7 +75,13 @@ const Notifications = () => {
       const tripId = typeof notification.tripId === 'object' 
         ? notification.tripId._id || notification.tripId 
         : notification.tripId;
-      navigate(`/trip/${tripId}`);
+      
+      // If it's a task assignment, navigate to tasks tab
+      if (notification.type === 'task_assigned') {
+        navigate(`/trip/${tripId}?tab=tasks`);
+      } else {
+        navigate(`/trip/${tripId}`);
+      }
       setIsOpen(false);
     }
   };
